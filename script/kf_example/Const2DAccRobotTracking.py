@@ -7,7 +7,7 @@ sys.path.append(os.getcwd())
 from script.kalman_filter import KalmanFilter
 from script.kf_example.print_data import print_data
 
-class Const2dAccObjectTracking(KalmanFilter):
+class Const2dAccRobotTracking(KalmanFilter):
     def __init__(self, x0, P0, A, B, C, sigma_sys, sigma_obs):
         super().__init__(x0, P0, A, B, C, sigma_sys, sigma_obs)
         self.i=0
@@ -18,7 +18,9 @@ class Const2dAccObjectTracking(KalmanFilter):
         self.tv_x=[0]
         self.tv_y=[0]
         self.ta_x=[10]*self.N # constant acceleration
+        self.ta_x[3]=-30 # suddenly deceleration
         self.ta_y=[10]*self.N # constant acceleration
+        self.ta_y[3]=-30 # suddenly deceleration
         for t in range(1,len(self.t)-1):
             self.tv_x.append(self.tv_x[t-1]+self.ta_x[t]*self.dt_)
             self.tv_y.append(self.tv_y[t-1]+self.ta_y[t]*self.dt_)
@@ -30,10 +32,9 @@ class Const2dAccObjectTracking(KalmanFilter):
         self.estimate=[]
 
         print("\nWe are about to estimate the person position given that we can observe the position with sensor noise. \
-In case that an object that will be estimated is human, we do not consider control vector. \
 True position, velocity, and acceleration were defined based on constant acceleration equation. \
-However, we defined a transition model considering constant velocity actually. \
-We aim here to see the estimate if we defined the \"wrong\" model by mistake.\n")
+We assume that a robot stops suddenly. And we defined a control vector. \
+We aim here to see the impact of the control.\n")
         self.fig = plt.figure()
 
     def track(self, sigma_obs):
@@ -61,7 +62,7 @@ We aim here to see the estimate if we defined the \"wrong\" model by mistake.\n"
             z=np.array([self.tp_x[self.i]+np.random.normal(scale=self.sigma_obs),self.tp_y[self.i]+np.random.normal(scale=self.sigma_obs)])
             self.o_x.append(z[0])
             self.o_y.append(z[1])
-            self.prediction(np.array([0,0,0,0]))
+            self.prediction(np.array([self.ta_x[self.i],self.ta_y[self.i]]))
             self.correction(z)
             self.estimate.append(kf.x_pos_)
             if self.i > self.N or \
@@ -69,11 +70,10 @@ We aim here to see the estimate if we defined the \"wrong\" model by mistake.\n"
                 self.estimate[self.i][1]>ylim[1] or \
                 self.estimate[self.i][0]<0 or\
                 self.estimate[self.i][1]<0:
-                print("\nWe found that the estimate has been delay as time has gone on according to output logs. \
-That is because we defined the transition model \"incorrectly\", and then acceleration has not updated according to the wrong model. \
-But estimation has been computed and updated by observation. So it appeared to have followed the true position with a bit late. \
-In real situation, if models had been wrong, there would be a possibility that we cannot observe objects because of out of sensor range. \
-Even if we had observed the position again, which means the object exists wthin the sensor range, we would see a large difference between true and estimate because of the wrong models.\n")
+                print("\nWe found that the estimate has followed the true value ven though the velocity of the robot suddenly changed. \
+That is because we add the acceleration as the control. \
+When a robot is about to bump into an obstacle and needs to stop, we can track the robot if we know the acceleration as a control. \
+In real situation, we need to consider processing time and the difference between the time that we got sensor data and current time. \n")
                 self.ani.event_source.stop()
 
             plt.ylim(ylim[0],ylim[1])
@@ -99,11 +99,12 @@ Even if we had observed the position again, which means the object exists wthin 
 dt=1
 x0=np.array([0,0,0,0])
 A=np.array([[1,0,dt,0],[0,1,0,dt],[0,0,1,0],[0,0,0,1]])
-B=np.identity(4)
+B=np.array([[0.5*dt*dt,0],[0,0.5*dt*dt],[dt,0],[0,dt]])
+print(B)
 C=np.eye(2,4)
 P0=np.identity(4)
 sigma_sys=1
 sigma_obs=1
-kf=Const2dAccObjectTracking(x0, P0, A, B, C, sigma_sys, sigma_obs)
+kf=Const2dAccRobotTracking(x0, P0, A, B, C, sigma_sys, sigma_obs)
 kf.track(sigma_obs)
     

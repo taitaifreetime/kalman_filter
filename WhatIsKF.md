@@ -33,8 +33,8 @@ $$\boldsymbol{C}=
 0 & 1 & 0 & 0
 \end{matrix} 
 \right)$$
-$$\boldsymbol{v}(t) \sim N(0, \sigma_v^2)$$
-$$\boldsymbol{w}(t) \sim N(0, \sigma_w^2)$$
+$$\boldsymbol{v}(t) \sim N(\boldsymbol{0}, \sigma_v^2)$$
+$$\boldsymbol{w}(t) \sim N(\boldsymbol{0}, \sigma_w^2)$$
 
 The procedure to estimate is devided into 2 steps and repeate them.
 

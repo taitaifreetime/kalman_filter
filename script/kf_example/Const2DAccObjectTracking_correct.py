@@ -8,8 +8,8 @@ from script.kalman_filter import KalmanFilter
 from script.kf_example.print_data import print_data
 
 class Const2dAccObjectTracking(KalmanFilter):
-    def __init__(self, x0, P0, A, B, C):
-        super().__init__(x0, P0, A, B, C)
+    def __init__(self, x0, P0, A, B, C, sigma_sys, sigma_obs):
+        super().__init__(x0, P0, A, B, C, sigma_sys, sigma_obs)
         self.i=0
         self.N=300
         self.t=[t for t in range(self.N)]
@@ -19,11 +19,11 @@ class Const2dAccObjectTracking(KalmanFilter):
         self.tv_y=[0]
         self.ta_x=[10]*self.N # constant acceleration
         self.ta_y=[10]*self.N # constant acceleration
-        for t in range(len(self.t)-1):
-            self.tv_x.append(self.tv_x[t]+self.ta_x[t]*self.dt_)
-            self.tv_y.append(self.tv_y[t]+self.ta_y[t]*self.dt_)
-            self.tp_x.append(self.tp_x[t]+self.tv_x[t]*self.dt_+1/2*self.dt_*self.dt_*self.ta_x[t]*self.dt_)
-            self.tp_y.append(self.tp_y[t]+self.tv_y[t]*self.dt_+1/2*self.dt_*self.dt_*self.ta_y[t]*self.dt_)
+        for t in range(1,len(self.t)-1):
+            self.tv_x.append(self.tv_x[t-1]+self.ta_x[t]*self.dt_)
+            self.tv_y.append(self.tv_y[t-1]+self.ta_y[t]*self.dt_)
+            self.tp_x.append(self.tp_x[t-1]+self.tv_x[t-1]*self.dt_+1/2*self.dt_*self.dt_*self.ta_x[t])
+            self.tp_y.append(self.tp_y[t-1]+self.tv_y[t-1]*self.dt_+1/2*self.dt_*self.dt_*self.ta_y[t])
 
         self.o_x=[]
         self.o_y=[]
@@ -37,8 +37,7 @@ We aim here to see the estimate if we defined the \"correct\" model. \
 We just changed the transition model and the estimate vector so that we can update acceleration as well.\n")
         self.fig = plt.figure()
 
-    def track(self, sigma_sys, sigma_obs):
-        self.sigma_sys=sigma_sys
+    def track(self, sigma_obs):
         self.sigma_obs=sigma_obs
         self.ani = FuncAnimation(self.fig, self.plot, interval=100, blit=True)
         plt.show()
@@ -63,8 +62,8 @@ We just changed the transition model and the estimate vector so that we can upda
             z=np.array([self.tp_x[self.i]+np.random.normal(scale=self.sigma_obs),self.tp_y[self.i]+np.random.normal(scale=self.sigma_obs)])
             self.o_x.append(z[0])
             self.o_y.append(z[1])
-            self.prediction(np.array([np.random.normal(scale=self.sigma_sys),np.random.normal(scale=self.sigma_sys),np.random.normal(scale=self.sigma_sys),np.random.normal(scale=self.sigma_sys)]),np.array([0,0,0,0,0,0]))
-            self.correction(np.array([np.random.normal(scale=self.sigma_sys),np.random.normal(scale=self.sigma_sys)]),z)
+            self.prediction(np.array([0,0,0,0,0,0]))
+            self.correction(z)
             self.estimate.append(kf.x_pos_)
             if self.i > self.N or \
                 self.estimate[self.i][0]>xlim[1] or \
@@ -105,5 +104,7 @@ A=np.array([[1,0,dt,0,1/2*dt*dt,0],[0,1,0,dt,0,1/2*dt*dt],[0,0,1,0,dt,0],[0,0,0,
 B=np.identity(6)
 C=np.eye(2,6)
 P0=np.identity(6)
-kf=Const2dAccObjectTracking(x0, P0, A, B, C)
-kf.track(1,1)
+sigma_sys=1
+sigma_obs=1
+kf=Const2dAccObjectTracking(x0, P0, A, B, C, sigma_sys, sigma_obs)
+kf.track(sigma_obs)
